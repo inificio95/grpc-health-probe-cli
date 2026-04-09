@@ -5,61 +5,47 @@ import (
 	"time"
 )
 
-// Config holds the configuration for a gRPC health probe check.
+// Config holds all parameters for a health probe run.
 type Config struct {
-	// Address is the gRPC server address in host:port format.
+	// Address is the host:port of the gRPC server.
 	Address string
-
-	// Service is the gRPC service name to check. Empty string checks the overall server health.
+	// Service is the gRPC service name to check. Empty string checks overall server health.
 	Service string
-
-	// Timeout is the per-attempt connection and RPC timeout.
+	// Timeout is the per-attempt deadline.
 	Timeout time.Duration
-
-	// RetryMax is the maximum number of retry attempts (0 means no retries).
-	RetryMax int
-
-	// RetryInterval is the duration to wait between retry attempts.
+	// MaxRetries is the number of additional attempts after the first failure.
+	MaxRetries int
+	// RetryInterval is the wait time between retry attempts.
 	RetryInterval time.Duration
-
-	// TLS indicates whether to use TLS for the connection.
-	TLS bool
-
-	// TLSNoVerify skips TLS certificate verification when TLS is enabled.
-	TLSNoVerify bool
-
-	// TLSCACert is the path to a CA certificate file for TLS verification.
-	TLSCACert string
+	// UserAgent is the gRPC user-agent header value.
+	UserAgent string
 }
 
-// DefaultConfig returns a Config with sensible defaults.
+// DefaultConfig returns a Config populated with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
+		Address:       "localhost:50051",
+		Service:       "",
 		Timeout:       5 * time.Second,
-		RetryMax:      0,
+		MaxRetries:    3,
 		RetryInterval: 1 * time.Second,
+		UserAgent:     "grpc-health-probe-cli",
 	}
 }
 
-// Validate checks that the Config fields are valid.
+// Validate checks that the Config has all required fields set correctly.
 func (c Config) Validate() error {
 	if c.Address == "" {
 		return errors.New("address must not be empty")
 	}
 	if c.Timeout <= 0 {
-		return errors.New("timeout must be greater than zero")
+		return errors.New("timeout must be positive")
 	}
-	if c.RetryMax < 0 {
-		return errors.New("retry-max must be non-negative")
+	if c.MaxRetries < 0 {
+		return errors.New("max-retries must be non-negative")
 	}
 	if c.RetryInterval < 0 {
 		return errors.New("retry-interval must be non-negative")
-	}
-	if c.TLSNoVerify && !c.TLS {
-		return errors.New("tls-no-verify requires tls to be enabled")
-	}
-	if c.TLSCACert != "" && !c.TLS {
-		return errors.New("tls-ca-cert requires tls to be enabled")
 	}
 	return nil
 }
