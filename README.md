@@ -30,6 +30,7 @@ grpc-health-probe-cli --addr=localhost:50051
 | `--retries` | `3` | Number of retry attempts |
 | `--retry-delay` | `1s` | Delay between retries |
 | `--tls` | `false` | Enable TLS |
+| `--verbose` | `false` | Print detailed output for each attempt |
 
 ### Example
 
@@ -46,6 +47,7 @@ grpc-health-probe-cli \
 Exit codes:
 - `0` — Service is healthy
 - `1` — Service is unhealthy or unreachable
+- `2` — Invalid arguments or configuration error
 
 ---
 
