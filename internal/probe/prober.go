@@ -41,6 +41,11 @@ type Result struct {
 	Err      error
 }
 
+// IsHealthy reports whether the result indicates the service is serving.
+func (r Result) IsHealthy() bool {
+	return r.Err == nil && r.Status == StatusServing
+}
+
 // Prober performs gRPC health checks against a target.
 type Prober struct {
 	cfg Config
@@ -59,7 +64,7 @@ func (p *Prober) Check(ctx context.Context) Result {
 	var last Result
 	for attempt := 1; attempt <= p.cfg.MaxRetries+1; attempt++ {
 		last = p.doCheck(ctx, attempt)
-		if last.Err == nil && last.Status == StatusServing {
+		if last.IsHealthy() {
 			return last
 		}
 		if attempt <= p.cfg.MaxRetries {
