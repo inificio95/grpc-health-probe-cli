@@ -66,7 +66,7 @@ func run(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintln(cmd.OutOrStdout(), output)
 
 	if !result.Healthy {
-		return fmt.Errorf("service is not healthy")
+		return fmt.Errorf("service reported unhealthy status: %s", result.Status)
 	}
 	return nil
 }
