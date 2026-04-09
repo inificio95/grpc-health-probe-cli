@@ -1,51 +1,49 @@
 package probe
 
-import (
-	"errors"
-	"time"
-)
+import "fmt"
 
-// Config holds all parameters for a health probe run.
+// Config holds all configuration for the Prober.
 type Config struct {
-	// Address is the host:port of the gRPC server.
+	// Address is the host:port of the gRPC server to probe.
 	Address string
-	// Service is the gRPC service name to check. Empty string checks overall server health.
+	// Service is the gRPC service name to check (empty means server-level check).
 	Service string
-	// Timeout is the per-attempt deadline.
-	Timeout time.Duration
-	// MaxRetries is the number of additional attempts after the first failure.
-	MaxRetries int
-	// RetryInterval is the wait time between retry attempts.
-	RetryInterval time.Duration
-	// UserAgent is the gRPC user-agent header value.
-	UserAgent string
+	// Timeout configures dial and per-request timeouts.
+	Timeout TimeoutConfig
+	// Retry configures retry behaviour.
+	Retry RetryConfig
+	// TLS configures transport-layer security.
+	TLS TLSConfig
+	// Format is the output format: "text" or "json".
+	Format string
 }
 
 // DefaultConfig returns a Config populated with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		Address:       "localhost:50051",
-		Service:       "",
-		Timeout:       5 * time.Second,
-		MaxRetries:    3,
-		RetryInterval: 1 * time.Second,
-		UserAgent:     "grpc-health-probe-cli",
+		Timeout: DefaultTimeoutConfig(),
+		Retry:   DefaultRetryConfig(),
+		TLS:     TLSConfig{Enabled: false},
+		Format:  "text",
 	}
 }
 
-// Validate checks that the Config has all required fields set correctly.
-func (c Config) Validate() error {
+// Validate checks that the Config is consistent and complete.
+func (c *Config) Validate() error {
 	if c.Address == "" {
-		return errors.New("address must not be empty")
+		return fmt.Errorf("config: address must not be empty")
 	}
-	if c.Timeout <= 0 {
-		return errors.New("timeout must be positive")
+	if c.Format != "text" && c.Format != "json" {
+		return fmt.Errorf("config: format must be \"text\" or \"json\", got %q", c.Format)
 	}
-	if c.MaxRetries < 0 {
-		return errors.New("max-retries must be non-negative")
+	if err := c.Timeout.Validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
 	}
-	if c.RetryInterval < 0 {
-		return errors.New("retry-interval must be non-negative")
+	if err := c.Retry.Validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
 	}
 	return nil
 }
