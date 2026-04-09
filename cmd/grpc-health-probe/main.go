@@ -3,70 +3,92 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/example/grpc-health-probe-cli/internal/probe"
 )
 
-var (
-	address    string
-	service    string
-	timeout    time.Duration
-	retryCount int
-	retryDelay time.Duration
-	format     string
-	tls        bool
-)
-
 func newRootCmd() *cobra.Command {
+	var (
+		addr       string
+		service    string
+		format     string
+		timeout    int
+		dialTimeout int
+		maxRetries int
+		metadata   []string
+		tlsEnabled bool
+		tlsSkipVerify bool
+		tlsCACert  string
+		tlsCert    string
+		tlsKey     string
+		authType   string
+		authToken  string
+		authUser   string
+		authPass   string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "grpc-health-probe",
 		Short: "Check gRPC service health endpoints",
-		Long:  "A lightweight CLI tool for checking gRPC service health endpoints with configurable retry and timeout logic.",
-		RunE:  run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(addr, service, format, timeout, dialTimeout, maxRetries,
+				metadata, tlsEnabled, tlsSkipVerify, tlsCACert, tlsCert, tlsKey,
+				authType, authToken, authUser, authPass)
+		},
 	}
 
-	cmd.Flags().StringVarP(&address, "addr", "a", "", "gRPC server address (host:port) (required)")
-	cmd.Flags().StringVarP(&service, "service", "s", "", "gRPC service name to check (empty for overall health)")
-	cmd.Flags().DurationVarP(&timeout, "timeout", "t", 5*time.Second, "timeout per probe attempt")
-	cmd.Flags().IntVarP(&retryCount, "retry", "r", 0, "number of retries on failure")
-	cmd.Flags().DurationVar(&retryDelay, "retry-delay", time.Second, "delay between retries")
-	cmd.Flags().StringVarP(&format, "format", "f", "text", "output format: text or json")
-	cmd.Flags().BoolVar(&tls, "tls", false, "use TLS when connecting")
+	cmd.Flags().StringVar(&addr, "addr", "", "gRPC server address (required)")
+	cmd.Flags().StringVar(&service, "service", "", "Service name to check (empty for overall health)")
+	cmd.Flags().StringVar(&format, "format", "text", "Output format: text or json")
+	cmd.Flags().IntVar(&timeout, "timeout", 5, "Request timeout in seconds")
+	cmd.Flags().IntVar(&dialTimeout, "dial-timeout", 5, "Dial timeout in seconds")
+	cmd.Flags().IntVar(&maxRetries, "max-retries", 0, "Maximum number of retries")
+	cmd.Flags().StringArrayVar(&metadata, "metadata", nil, "Metadata key=value pairs")
+	cmd.Flags().BoolVar(&tlsEnabled, "tls", false, "Enable TLS")
+	cmd.Flags().BoolVar(&tlsSkipVerify, "tls-skip-verify", false, "Skip TLS certificate verification")
+	cmd.Flags().StringVar(&tlsCACert, "tls-ca-cert", "", "Path to CA certificate")
+	cmd.Flags().StringVar(&tlsCert, "tls-cert", "", "Path to client certificate")
+	cmd.Flags().StringVar(&tlsKey, "tls-key", "", "Path to client key")
+	cmd.Flags().StringVar(&authType, "auth-type", "none", "Auth type: none, bearer, or basic")
+	cmd.Flags().StringVar(&authToken, "auth-token", "", "Bearer token")
+	cmd.Flags().StringVar(&authUser, "auth-username", "", "Basic auth username")
+	cmd.Flags().StringVar(&authPass, "auth-password", "", "Basic auth password")
 
 	_ = cmd.MarkFlagRequired("addr")
-
 	return cmd
 }
 
-func run(cmd *cobra.Command, _ []string) error {
-	cfg := probe.Config{
-		Address:    address,
-		Service:    service,
-		Timeout:    timeout,
-		RetryCount: retryCount,
-		RetryDelay: retryDelay,
-		TLS:        tls,
+func run(addr, service, format string, timeoutSec, dialTimeoutSec, maxRetries int,
+	metadata []string, tlsEnabled, tlsSkipVerify bool, tlsCACert, tlsCert, tlsKey string,
+	authType, authToken, authUser, authPass string) error {
+
+	cfg := probe.DefaultConfig()
+	cfg.Address = addr
+	cfg.Service = service
+
+	cfg.Auth = probe.AuthConfig{
+		Type:     probe.AuthType(authType),
+		Token:    authToken,
+		Username: authUser,
+		Password: authPass,
+	}
+
+	if err := cfg.Auth.Validate(); err != nil {
+		return fmt.Errorf("auth config: %w", err)
 	}
 
 	p, err := probe.New(cfg)
 	if err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return fmt.Errorf("creating prober: %w", err)
 	}
 
-	result := p.Check(cmd.Context())
+	result := p.Check()
+	fmt.Print(probe.FormatResult(result, format))
 
-	output, err := probe.FormatResult(result, format)
-	if err != nil {
-		return fmt.Errorf("formatting result: %w", err)
-	}
-
-	fmt.Fprintln(cmd.OutOrStdout(), output)
-
-	if !result.Healthy {
-		return fmt.Errorf("service reported unhealthy status: %s", result.Status)
+	if !result.OK {
+		os.Exit(1)
 	}
 	return nil
 }
