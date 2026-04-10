@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -9,39 +9,32 @@ import (
 	"github.com/user/grpc-health-probe-cli/internal/probe"
 )
 
-// addDeadlineFlags registers deadline-related CLI flags onto cmd.
+// addDeadlineFlags registers deadline-related flags onto cmd.
 func addDeadlineFlags(cmd *cobra.Command) {
 	if cmd == nil {
 		return
 	}
-	cmd.Flags().Bool("deadline", false, "Enable a global deadline for the entire probe")
-	cmd.Flags().Duration("deadline-duration", 30*time.Second, "Maximum total time allowed for the probe (e.g. 30s, 1m)")
+	cmd.Flags().Bool("deadline", false, "Enable an overall deadline for the probe")
+	cmd.Flags().Duration("deadline-duration", 10*time.Second, "Overall deadline duration (requires --deadline)")
 }
 
-// parseDeadlineConfig builds a DeadlineConfig from the flags registered on cmd.
+// parseDeadlineConfig builds a DeadlineConfig from the flags set on cmd.
 func parseDeadlineConfig(cmd *cobra.Command) (*probe.DeadlineConfig, error) {
 	if cmd == nil {
-		return probe.DefaultDeadlineConfig(), nil
+		return nil, errors.New("parseDeadlineConfig: nil command")
 	}
 
-	enabled, err := cmd.Flags().GetBool("deadline")
-	if err != nil {
-		return nil, fmt.Errorf("reading --deadline flag: %w", err)
-	}
+	cfg := probe.DefaultDeadlineConfig()
 
-	duration, err := cmd.Flags().GetDuration("deadline-duration")
-	if err != nil {
-		return nil, fmt.Errorf("reading --deadline-duration flag: %w", err)
+	if v, err := cmd.Flags().GetBool("deadline"); err == nil {
+		cfg.Enabled = v
 	}
-
-	cfg := &probe.DeadlineConfig{
-		Enabled:  enabled,
-		Duration: duration,
+	if v, err := cmd.Flags().GetDuration("deadline-duration"); err == nil {
+		cfg.Duration = v
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid deadline configuration: %w", err)
+		return nil, err
 	}
-
 	return cfg, nil
 }
