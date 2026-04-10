@@ -69,3 +69,14 @@ func (r *RateLimitConfig) Remaining() int {
 	}
 	return remaining
 }
+
+// Reset clears the current window state, setting the request count to zero
+// and the last window time to the zero value. This is useful in tests or when
+// an operator wants to manually clear the rate limit state.
+func (r *RateLimitConfig) Reset() {
+	if r == nil {
+		return
+	}
+	r.requestCount = 0
+	r.lastWindow = time.Time{}
+}
