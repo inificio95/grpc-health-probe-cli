@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+// startHealthServer starts an in-process gRPC health server and returns its address.
+// The server is automatically stopped when the test completes.
 func startHealthServer(t *testing.T, status grpc_health_v1.HealthCheckResponse_ServingStatus) string {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
@@ -87,6 +89,22 @@ func TestProberNew_InvalidConfig(t *testing.T) {
 	_, err := probe.New(cfg)
 	if err == nil {
 		t.Error("expected error for empty address")
+	}
+}
+
+func TestProberCheck_ContextCancelled(t *testing.T) {
+	addr := startHealthServer(t, grpc_health_v1.HealthCheckResponse_SERVING)
+	cfg := probe.DefaultConfig()
+	cfg.Address = addr
+	p, err := probe.New(cfg)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately before calling Check
+	res := p.Check(ctx)
+	if res.Err == nil {
+		t.Error("expected error when context is already cancelled")
 	}
 }
 
