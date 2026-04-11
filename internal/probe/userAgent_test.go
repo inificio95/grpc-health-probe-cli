@@ -79,3 +79,17 @@ func TestUserAgentConfig_String_Disabled(t *testing.T) {
 		t.Errorf("expected empty string for disabled config, got %q", ua)
 	}
 }
+
+func TestUserAgentConfig_String_CustomAppName(t *testing.T) {
+	cfg := &UserAgentConfig{
+		AppName:    "my-custom-app",
+		AppVersion: "2.0.0",
+	}
+	ua := cfg.String()
+	if !strings.Contains(ua, "my-custom-app") {
+		t.Errorf("expected user-agent to contain custom app name, got %q", ua)
+	}
+	if !strings.Contains(ua, "2.0.0") {
+		t.Errorf("expected user-agent to contain custom version, got %q", ua)
+	}
+}
