@@ -19,6 +19,7 @@ func addKeepaliveFlags(cmd *cobra.Command) {
 }
 
 // parseKeepaliveConfig reads keepalive flags from the command and returns a KeepaliveConfig.
+// If cmd is nil, the default configuration is returned.
 func parseKeepaliveConfig(cmd *cobra.Command) *probe.KeepaliveConfig {
 	cfg := probe.DefaultKeepaliveConfig()
 	if cmd == nil {
@@ -29,10 +30,14 @@ func parseKeepaliveConfig(cmd *cobra.Command) *probe.KeepaliveConfig {
 		cfg.Enabled = v
 	}
 	if v, err := cmd.Flags().GetDuration("keepalive-time"); err == nil {
-		cfg.Time = v
+		if v > 0 {
+			cfg.Time = v
+		}
 	}
 	if v, err := cmd.Flags().GetDuration("keepalive-timeout"); err == nil {
-		cfg.Timeout = v
+		if v > 0 {
+			cfg.Timeout = v
+		}
 	}
 	if v, err := cmd.Flags().GetBool("keepalive-permit-without-stream"); err == nil {
 		cfg.PermitWithoutStream = v
