@@ -1,37 +1,37 @@
 package main
 
 import (
-	"github.com/example/grpc-health-probe-cli/internal/probe"
 	"github.com/spf13/cobra"
+
+	"github.com/your-org/grpc-health-probe-cli/internal/probe"
 )
 
-// addNamespaceFlags registers namespace-related flags on the given command.
+// addNamespaceFlags registers namespace-related CLI flags onto cmd.
 func addNamespaceFlags(cmd *cobra.Command) {
-	if cmd == nil {
-		return
-	}
-	cmd.Flags().Bool("namespace-enabled", false, "Enable namespace qualification for probe identifiers")
-	cmd.Flags().String("namespace", "", "Namespace prefix to qualify probe names")
-	cmd.Flags().String("namespace-separator", ".", "Separator between namespace and probe name")
+	cmd.Flags().Bool("namespace-enabled", false, "Enable namespace prefixing for the service name")
+	cmd.Flags().String("namespace", "", "Namespace prefix to prepend to the service name (e.g. 'prod')")
 }
 
-// parseNamespaceConfig builds a NamespaceConfig from the command's parsed flags.
+// parseNamespaceConfig reads namespace flags from cmd and returns a NamespaceConfig.
+// If cmd is nil, the default config is returned.
 func parseNamespaceConfig(cmd *cobra.Command) *probe.NamespaceConfig {
+	defaults := probe.DefaultNamespaceConfig()
 	if cmd == nil {
-		return probe.DefaultNamespaceConfig()
+		return defaults
 	}
 
-	cfg := probe.DefaultNamespaceConfig()
-
-	if v, err := cmd.Flags().GetBool("namespace-enabled"); err == nil {
-		cfg.Enabled = v
-	}
-	if v, err := cmd.Flags().GetString("namespace"); err == nil && v != "" {
-		cfg.Namespace = v
-	}
-	if v, err := cmd.Flags().GetString("namespace-separator"); err == nil && v != "" {
-		cfg.Separator = v
+	enabled, err := cmd.Flags().GetBool("namespace-enabled")
+	if err != nil {
+		return defaults
 	}
 
-	return cfg
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return defaults
+	}
+
+	return &probe.NamespaceConfig{
+		Enabled:   enabled,
+		Namespace: ns,
+	}
 }
