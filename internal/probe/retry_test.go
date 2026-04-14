@@ -94,3 +94,20 @@ func TestWithRetry_ContextCancelled(t *testing.T) {
 		t.Errorf("expected context.Canceled, got %v", err)
 	}
 }
+
+func TestWithRetry_ContextCancelledDuringDelay(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	sentinel := errors.New("fail once")
+	err := WithRetry(ctx, RetryConfig{MaxAttempts: 3, Delay: 100 * time.Millisecond}, func(_ context.Context) error {
+		calls++
+		cancel() // cancel after first failure to interrupt the retry delay
+		return sentinel
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("expected 1 call before cancellation, got %d", calls)
+	}
+}
