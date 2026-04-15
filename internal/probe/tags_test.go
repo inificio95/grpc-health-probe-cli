@@ -61,6 +61,16 @@ func TestTagsConfig_Validate_EmptyValue(t *testing.T) {
 	}
 }
 
+func TestTagsConfig_Validate_NilTagsMap(t *testing.T) {
+	cfg := &TagsConfig{
+		Enabled: true,
+		Tags:    nil,
+	}
+	// A nil tags map with Enabled=true should either be valid (empty) or return an
+	// error, but must not panic.
+	_ = cfg.Validate()
+}
+
 func TestTagsConfig_AsLabels_Disabled(t *testing.T) {
 	cfg := DefaultTagsConfig()
 	if labels := cfg.AsLabels(); labels != nil {
