@@ -39,8 +39,19 @@ echo $?
 grpc-health-probe --addr=localhost:50051 --verbosity=warn
 ```
 
+### Error level
+```bash
+grpc-health-probe --addr=localhost:50051 --verbosity=error
+```
+
+### Combining verbosity with a specific service
+```bash
+grpc-health-probe --addr=localhost:50051 --service=my.Service --verbosity=debug
+```
+
 ## Notes
 
 - `--quiet` takes precedence over `--verbosity`.
 - When `--quiet` is set, no output is written regardless of the verbosity level.
 - Invalid verbosity levels will cause the command to exit with an error.
+- Verbosity flags apply to stderr output only; the health status result is always written to stdout.
